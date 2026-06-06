@@ -6,7 +6,7 @@ import telebot
 # =====================================================================
 # 1. КОНФИГУРАЦИЯ СИСТЕМЫ (Берется из настроек Render)
 # =====================================================================
-TELEGRAM_TOKEN = os.environ.get("8782318055:AAE4Q86B_7TcT5WoS0Ajgtoz9B8Mu0xlh9s")
+TELEGRAM_TOKEN = "8782318055:AAE4Q86B_7TcT5WoS0Ajgtoz9B8Mu0xlh9s"
 VK_API_TOKEN = os.environ.get("8758935544:AAEwREvxc7e0q-GuiO1Xx0oxA3d1UIHh39E")
 WATERMARK = "⚡ HemsSearch BACK ⚡"
 
