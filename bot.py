@@ -28,9 +28,10 @@ def home():
     return "searchHams Core Status: ONLINE"
 
 def run_web_server():
-    # Автоматическое связывание с портом, который ожидает Render
+    # Извлечение порта, который Render выделяет для бесплатного Web Service
     port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
+    # Запуск сервера на хосте 0.0.0.0 (обязательное требование Render Docs)
+    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
 
 # =====================================================================
 # 3. ИНТЕРФЕЙС И ВИЗУАЛИЗАЦИЯ (Фиолетово-серый код IntelScry-style)
@@ -68,7 +69,6 @@ def build_intel_report(query_type: str, query_value: str, sections: dict) -> str
 # =====================================================================
 
 def query_by_username(username: str) -> dict:
-    """Проверка доступности имени пользователя на открытых платформах"""
     clean_user = username.replace("@", "").strip()
     services = {
         "Telegram_Core": f"https://t.me{clean_user}",
@@ -87,7 +87,6 @@ def query_by_username(username: str) -> dict:
     return results
 
 def query_by_ip(ip: str) -> dict:
-    """Глубокий технический анализ IP через публичный шлюз ip-api"""
     try:
         url = f"http://ip-api.com{ip.strip()}?fields=status,message,country,countryCode,region,regionName,city,zip,lat,lon,timezone,isp,org,as,query"
         res = requests.get(url, timeout=4).json()
@@ -109,7 +108,6 @@ def query_by_ip(ip: str) -> dict:
     return {"status": "No public database found"}
 
 def query_by_vk(target: str) -> dict:
-    """Запрос открытых параметров профиля VK через официальное API"""
     if not VK_API_TOKEN:
         return {"api_status": "Token missing"}
     clean_id = target.replace("https://vk.com", "").replace("@", "").strip()
@@ -123,7 +121,7 @@ def query_by_vk(target: str) -> dict:
     try:
         data = requests.get(url, params=params, timeout=4).json()
         if "response" in data and len(data["response"]) > 0:
-            user = data["response"][0]
+            user = data["response"]
             counters = user.get("counters", {})
             return {
                 "account_uid": user.get("id"),
@@ -141,7 +139,6 @@ def query_by_vk(target: str) -> dict:
     return {"status": "Profile restricted"}
 
 def query_by_phone(phone: str) -> dict:
-    """Анализ реестра номеров по открытым DEF-кодам сотовых операторов"""
     clean_phone = "".join(filter(str.isdigit, phone))
     try:
         url = f"https://htmlweb.ru{clean_phone}"
@@ -159,7 +156,6 @@ def query_by_phone(phone: str) -> dict:
     return {"phone_raw_format": f"+{clean_phone}", "country_origin": "Russian Federation"}
 
 def query_by_ton(wallet: str) -> dict:
-    """Парсинг открытого баланса кошелька через официальное API блокчейна TON"""
     try:
         url = f"https://tonapi.io{wallet.strip()}"
         response = requests.get(url, timeout=5)
@@ -195,8 +191,7 @@ def send_welcome(message):
 @bot.message_handler(commands=['user'])
 def cmd_user(message):
     args = message.text.split(maxsplit=1)
-    if len(args) < 2: 
-        return bot.reply_to(message, "Введите юзернейм.")
+    if len(args) < 2: return bot.reply_to(message, "Введите юзернейм.")
     target = args[1].strip()
     data = query_by_username(target)
     report = build_intel_report("searchHams OSINT // Username", target, {"footprint_detected": data})
@@ -205,8 +200,7 @@ def cmd_user(message):
 @bot.message_handler(commands=['ip'])
 def cmd_ip(message):
     args = message.text.split(maxsplit=1)
-    if len(args) < 2: 
-        return bot.reply_to(message, "Введите IP.")
+    if len(args) < 2: return bot.reply_to(message, "Введите IP.")
     target = args[1].strip()
     data = query_by_ip(target)
     report = build_intel_report("searchHams OSINT // IP Routing", target, {"geo_positioning": data})
@@ -215,8 +209,7 @@ def cmd_ip(message):
 @bot.message_handler(commands=['vk'])
 def cmd_vk(message):
     args = message.text.split(maxsplit=1)
-    if len(args) < 2: 
-        return bot.reply_to(message, "Введите ID VK.")
+    if len(args) < 2: return bot.reply_to(message, "Введите ID VK.")
     target = args[1].strip()
     data = query_by_vk(target)
     report = build_intel_report("searchHams OSINT // VK Profile", target, {"profile_metadata": data})
@@ -225,8 +218,7 @@ def cmd_vk(message):
 @bot.message_handler(commands=['phone'])
 def cmd_phone(message):
     args = message.text.split(maxsplit=1)
-    if len(args) < 2: 
-        return bot.reply_to(message, "Введите номер телефона.")
+    if len(args) < 2: return bot.reply_to(message, "Введите номер телефона.")
     target = args[1].strip()
     data = query_by_phone(target)
     report = build_intel_report("searchHams OSINT // Telecom Core", target, {"cellular_registry": data})
@@ -235,23 +227,24 @@ def cmd_phone(message):
 @bot.message_handler(commands=['ton'])
 def cmd_ton(message):
     args = message.text.split(maxsplit=1)
-    if len(args) < 2: 
-        return bot.reply_to(message, "Введите адрес TON.")
+    if len(args) < 2: return bot.reply_to(message, "Введите адрес TON.")
     target = args[1].strip()
     data = query_by_ton(target)
     report = build_intel_report("searchHams OSINT // TonKeeper Blockchain", target, {"ledger_state": data})
     bot.reply_to(message, report, parse_mode="MarkdownV2")
 
 # =====================================================================
-# 6. ЗАПУСК ДВУХ ПОТОКОВ (СЕРВЕР + БОТ)
+# 6. КОРРЕКТНЫЙ ЗАПУСК ПОТОКОВ (СЕРВЕР ИНИЦИАЛИЗИРУЕТСЯ ПЕРВЫМ)
 # =====================================================================
 if __name__ == '__main__':
-    # Поток 1: Запуск локального сервера Flask для прохождения проверки Render
-    server_thread = Thread(target=run_web_server)
-    server_thread.daemon = True
-    server_thread.start()
-    print("[SYSTEM] Фоновый веб-сервер успешно запущен на локальном хосте...")
+    # 1. Запускаем веб-сервер Flask в основном потоке, чтобы занять порт 10000 сразу
+    print("[SYSTEM] Инициализация веб-интерфейса на порту 10000...")
     
-    # Поток 2: Запуск основного цикла Long Polling для обработки команд бота
-    print("[SYSTEM] Система searchHams успешно инициализирована...")
-    bot.infinity_polling()
+    # 2. Переносим бесконечный опрос Telegram-бота в фоновый поток
+    bot_thread = Thread(target=bot.infinity_polling)
+    bot_thread.daemon = True
+    bot_thread.start()
+    print("[SYSTEM] Поток прослушивания Telegram API запущен успешно...")
+    
+    # 3. Удерживаем сокет открытым для прохождения деплоя Render
+    run_web_server()
