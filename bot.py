@@ -11,7 +11,7 @@ from threading import Thread
 TELEGRAM_TOKEN = os.environ.get("8782318055:AAE4Q86B_7TcT5WoS0Ajgtoz9B8Mu0xlh9s")
 VK_API_TOKEN = os.environ.get("8758935544:AAEwREvxc7e0q-GuiO1Xx0oxA3d1UIHh39E")
 
-WATERMARK = "⚡ SEARCHHAMS_INTEL_SYSTEM_v5.5_LIVE ⚡"
+WATERMARK = "⚡ SEARCHHAMS ⚡"
 
 if not TELEGRAM_TOKEN:
     raise ValueError("Critical Error: TELEGRAM_TOKEN variable is not set.")
