@@ -6,7 +6,7 @@ from flask import Flask
 from threading import Thread
 
 # =====================================================================
-# 1. КОНФИГУРАЦИЯ СИСТЕМЫ (searchHams Engine) - ТОКЕНЫ ВШИТЫ НАПРЯМУЮ
+# 1. CONFIGURATION (searchHams Engine) - ТОКЕНЫ ВШИТЫ НАПРЯМУЮ
 # =====================================================================
 TELEGRAM_TOKEN = "8782318055:AAE4Q86B_7TcT5WoS0Ajgtoz9B8Mu0xlh9s"
 VK_API_TOKEN = "vk1.a.gg0A2uqhaeJR4Q0rQroAOrKxLtlld-zpDhUuNRsLph2tyJZzoyIioGN8vNs_AzCfepKFqTdigONU-ydz1VZnL68Ns7qZ0HcgUhmEOE_F1ZI26awIwunbGfzTpn-xmEEXAueaaBR5lb-ew_z478YoxYuNlAEHHfGBddR9u10-MJae6l1UUC4C3eKWD28ugFy7hhguP-Ihcxsb42Fbq_SPsw"
@@ -16,7 +16,7 @@ WATERMARK = "⚡ SEARCHHAMS_INTEL_SYSTEM_v5.5_LIVE ⚡"
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
 # =====================================================================
-# 2. ВЕБ-СЕРВЕР ДЛЯ ОБХОДА ТАЙМАУТА ПОРТОВ (БЕСПЛАТНЫЙ ТАРИФ)
+# 2. FREE TIER PORT BYPASS SERVER
 # =====================================================================
 app = Flask('')
 
@@ -29,7 +29,7 @@ def run_web_server():
     app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
 
 # =====================================================================
-# 3. ИНТЕРФЕЙС И ВИЗУАЛИЗАЦИЯ (Фиолетово-серый код IntelScry-style)
+# 3. INTERFACE VISUALIZATION (IntelScry-style)
 # =====================================================================
 def build_intel_report(query_type: str, query_value: str, sections: dict) -> str:
     border = "=" * 55
@@ -60,35 +60,29 @@ def build_intel_report(query_type: str, query_value: str, sections: dict) -> str
     return report
 
 # =====================================================================
-# 4. ПОИСКОВЫЕ МОДУЛИ
+# 4. OSINT SEARCH MODULES (ИСПРАВЛЕННЫЕ ССЫЛКИ И ПАРАМЕТРЫ)
 # =====================================================================
 
 def query_by_username(username: str) -> dict:
+    """Генерация прямых OSINT-ссылок для проверки (обход блокировок Render тайм-аутов)"""
     clean_user = username.replace("@", "").strip()
-    services = {
-        "Telegram_Core": f"https://t.me{clean_user}",
-        "GitHub_Dev": f"https://github.com{clean_user}",
-        "VK_Social": f"https://vk.com{clean_user}",
-        "Reddit_Forum": f"https://reddit.com{clean_user}"
+    return {
+        "Telegram_Profile": f"https://t.me{clean_user}",
+        "GitHub_Account": f"https://github.com{clean_user}",
+        "VK_Social_Link": f"https://vk.com{clean_user}",
+        "Reddit_User": f"https://reddit.com{clean_user}",
+        "OSINT_Report": f"Генерация прямых ссылок во избежание блокировок хостинга"
     }
-    results = {}
-    for platform, url in services.items():
-        try:
-            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-            response = requests.get(url, headers=headers, timeout=3, allow_redirects=True)
-            if response.status_code == 200:
-                results[platform] = f"ACTIVE // {url}"
-            else:
-                results[platform] = "NOT_FOUND"
-        except Exception:
-            results[platform] = "RESPONSE_TIMEOUT"
-    return results
 
 def query_by_ip(ip: str) -> dict:
+    """Исправленный модуль IP-поиска с защитой от пустых склеек"""
     try:
-        clean_ip = ip.strip()
+        clean_ip = str(ip).replace(" ", "").strip()
+        # Жестко прописан правильный URL-путь
         url = f"http://ip-api.com{clean_ip}?fields=status,message,country,countryCode,region,regionName,city,zip,lat,lon,timezone,isp,org,as,query"
-        res = requests.get(url, timeout=4).json()
+        response = requests.get(url, timeout=5)
+        res = response.json()
+        
         if res.get("status") == "success":
             return {
                 "ip_query_address": res.get("query"),
@@ -104,12 +98,13 @@ def query_by_ip(ip: str) -> dict:
             }
     except Exception as e:
         return {"error_log": str(e)}
-    return {"status": "No public database found"}
+    return {"status": "No public database found for this IP or Invalid Format"}
 
 def query_by_vk(target: str, token: str) -> dict:
+    """Безопасный разбор ответа VK API с проверкой типа данных"""
     if not token:
         return {"api_status": "Token missing"}
-    clean_id = target.replace("https://vk.com", "").replace("@", "").strip()
+    clean_id = str(target).replace("https://vk.com", "").replace("@", "").replace(" ", "").strip()
     url = "https://vk.com"
     params = {
         "user_ids": clean_id,
@@ -118,9 +113,10 @@ def query_by_vk(target: str, token: str) -> dict:
         "v": "5.131"
     }
     try:
-        data = requests.get(url, params=params, timeout=4).json()
+        response = requests.get(url, params=params, timeout=5)
+        data = response.json()
         if "response" in data and len(data["response"]) > 0:
-            user = data["response"][0]
+            user = data["response"][0]  # Извлекаем первый элемент списка корректно
             counters = user.get("counters", {})
             return {
                 "account_uid": user.get("id"),
@@ -134,20 +130,19 @@ def query_by_vk(target: str, token: str) -> dict:
                 "followers_total": user.get("followers_count", counters.get("followers", 0))
             }
         elif "error" in data:
-            return {"api_error": data["error"].get("error_msg", "Unknown error")}
+            return {"api_error_msg": data["error"].get("error_msg", "Unknown API Error")}
     except Exception as e:
         return {"error_log": str(e)}
-    return {"status": "Profile restricted or profile deleted"}
+    return {"status": "Profile restricted or unexpected API structure"}
 
 def query_by_phone(phone: str) -> dict:
-    clean_phone = "".join(filter(str.isdigit, phone))
+    """Ваш стабильный, работающий рабочий модуль телефона"""
+    clean_phone = "".join(filter(str.isdigit, str(phone)))
     if not clean_phone:
         return {"error": "Invalid phone format"}
         
-    # Каскадный разбор DEF-диапазонов без риска блокировок API
     operator = "Определен (МТС/МегаФон/Билайн/Теле2)"
     region = "Центральный узел связи РФ / СНГ"
-    country = "Российская Федерация (Флагманский диапазон)"
     
     if clean_phone.startswith("791") or clean_phone.startswith("798"):
         operator = "МТС (MTS Core Network)"
@@ -167,22 +162,22 @@ def query_by_phone(phone: str) -> dict:
             
     return {
         "phone_raw_format": f"+{clean_phone}",
-        "country_origin": country,
+        "country_origin": "Российская Федерация",
         "allocated_region": region,
         "carrier_provider": operator,
-        "format_validation": "STRUCTURE_VERIFIED",
-        "mcc_mnc_identity": "250-XX (Federal Node)"
+        "format_validation": "STRUCTURE_VERIFIED"
     }
 
 def query_by_ton(wallet: str) -> dict:
     try:
-        url = f"https://tonapi.io{wallet.strip()}"
+        clean_wallet = str(wallet).replace(" ", "").strip()
+        url = f"https://tonapi.io{clean_wallet}"
         response = requests.get(url, timeout=5)
+        data = response.json()
         if response.status_code == 200:
-            data = response.json()
             raw_balance = float(data.get("balance", 0)) / 10**9
             return {
-                "wallet_address": data.get("address", wallet),
+                "wallet_address": data.get("address", clean_wallet),
                 "account_state": data.get("status", "active"),
                 "wallet_balance_ton": f"{raw_balance:.4f} TON",
                 "is_scam_reported": "TRUE" if data.get("is_scam") else "FALSE"
@@ -190,8 +185,8 @@ def query_by_ton(wallet: str) -> dict:
     except Exception as e:
         return {"error_log": str(e)}
     return {"status": "Wallet invalid or offline"}
- # =====================================================================
-# 5. ОБРАБОТЧИКИ КОМАНД ТЕЛЕГРАМ (ТОЧНОЕ ПОЛУЧЕНИЕ СТРОКИ АРГУМЕНТА)
+# =====================================================================
+# 5. TELEGRAM COMMAND HANDLERS (СТРОГОЕ ИЗВЛЕЧЕНИЕ ТЕКСТА ИЗ СПИСКА)
 # =====================================================================
 
 @bot.message_handler(commands=['start', 'help'])
@@ -211,7 +206,7 @@ def send_welcome(message):
 def cmd_user(message):
     args = message.text.split(maxsplit=1)
     if len(args) < 2: return bot.reply_to(message, "Введите юзернейм.")
-    target = args[1].strip() # ИСПРАВЛЕНО: Извлекаем именно текст аргумента из списка
+    target = args[1].strip() # Исправлено: строго вычленяем цель из списка
     data = query_by_username(target)
     report = build_intel_report("searchHams OSINT // Username", target, {"footprint_detected": data})
     bot.reply_to(message, report, parse_mode="MarkdownV2")
@@ -220,7 +215,7 @@ def cmd_user(message):
 def cmd_ip(message):
     args = message.text.split(maxsplit=1)
     if len(args) < 2: return bot.reply_to(message, "Введите IP.")
-    target = args[1].strip() # ИСПРАВЛЕНО: Извлекаем чистую строку IP из списка
+    target = args[1].strip() # Исправлено: строго вычленяем чистый IP из списка
     data = query_by_ip(target)
     report = build_intel_report("searchHams OSINT // IP Routing", target, {"geo_positioning": data})
     bot.reply_to(message, report, parse_mode="MarkdownV2")
@@ -229,7 +224,7 @@ def cmd_ip(message):
 def cmd_vk(message):
     args = message.text.split(maxsplit=1)
     if len(args) < 2: return bot.reply_to(message, "Введите ID VK.")
-    target = args[1].strip() # ИСПРАВЛЕНО: Извлекаем VK-параметр из списка
+    target = args[1].strip() # Исправлено: строго вычленяем VK параметр из списка
     data = query_by_vk(target, VK_API_TOKEN)
     report = build_intel_report("searchHams OSINT // VK Profile", target, {"profile_metadata": data})
     bot.reply_to(message, report, parse_mode="MarkdownV2")
@@ -238,7 +233,7 @@ def cmd_vk(message):
 def cmd_phone(message):
     args = message.text.split(maxsplit=1)
     if len(args) < 2: return bot.reply_to(message, "Введите номер телефона.")
-    target = args[1].strip() # ИСПРАВЛЕНО: Извлекаем номер из списка
+    target = args[1].strip() # Исправлено: строго вычленяем номер из списка
     data = query_by_phone(target)
     report = build_intel_report("searchHams OSINT // Telecom Core", target, {"cellular_registry": data})
     bot.reply_to(message, report, parse_mode="MarkdownV2")
@@ -247,13 +242,13 @@ def cmd_phone(message):
 def cmd_ton(message):
     args = message.text.split(maxsplit=1)
     if len(args) < 2: return bot.reply_to(message, "Введите адрес TON.")
-    target = args[1].strip() # ИСПРАВЛЕНО: Извлекаем адрес кошелька из списка
+    target = args[1].strip() # Исправлено: строго вычленяем кошелек из списка
     data = query_by_ton(target)
     report = build_intel_report("searchHams OSINT // TonKeeper Blockchain", target, {"ledger_state": data})
     bot.reply_to(message, report, parse_mode="MarkdownV2")
 
 # =====================================================================
-# 6. КОРРЕКТНЫЙ ЗАПУСК ПОТОКОВ (БЕСПЛАТНЫЙ ТАРИФ)
+# 6. SYSTEM RUN
 # =====================================================================
 if __name__ == '__main__':
     print("[SYSTEM] Инициализация веб-интерфейса на порту 10000...")
