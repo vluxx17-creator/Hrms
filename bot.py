@@ -78,7 +78,7 @@ def query_by_ip(ip: str) -> dict:
     try:
         clean_ip = str(ip).replace(" ", "").strip()
         # ГАРАНТИРОВАННОЕ ИСПРАВЛЕНИЕ С КРИВОЙ ЛИНИЕЙ (/) ПЕРЕД IP
-        url = f"http://ip-api.com{clean_ip}?fields=status,message,country,countryCode,region,regionName,city,zip,lat,lon,timezone,isp,org,as,query"
+        url = f"http://ip-api.com/{clean_ip}?fields=status,message,country,countryCode,region,regionName,city,zip,lat,lon,timezone,isp,org,as,query"
         response = requests.get(url, timeout=5)
         res = response.json()
         
